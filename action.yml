@@ -1,67 +1,84 @@
 name: 'PostgreSQL Backup to GitHub'
-description: 'Backs up PostgreSQL databases and pushes them to a specified GitHub repository and branch.'
-author: 'optim4tech'
-branding:
-  icon: 'database'
-  color: 'blue'
+description: 'Take periodic backups of PostgreSQL databases and push them into a GitHub repository.'
+author: 'optim4tech-devops-team'
 
 inputs:
-  github_token:
-    description: 'GitHub Token to push backups'
+  backup_frequency:
+    description: >
+      Defines how often the backup should be taken. 
+      Accepted values:
+      - `daily`: triggers daily backup
+      - `weekly`: triggers weekly backup
+      - `monthly`: triggers monthly backup
+      
+      Affects the folder structure and commit message.
     required: true
+
+  github_token:
+    description: 'GitHub token with push access to target repository'
+    required: true
+
+  db_list_file:
+    description: 'Path to the file containing comma-separated PostgreSQL database names'
+    required: true
+    default: './project.txt'
+
+  target_repo:
+    description: 'The GitHub repository to push backups to (e.g., user/repo)'
+    required: true
+
+  target_branch:
+    description: 'Target branch of the repository to push backups into'
+    required: true
+    default: 'main'
+
   pg_user:
     description: 'PostgreSQL username'
     required: true
+
   pg_password:
     description: 'PostgreSQL password'
     required: true
+
   pg_host:
     description: 'PostgreSQL host'
     required: true
+
   pg_port:
     description: 'PostgreSQL port'
-    required: false
-    default: '5432'
-  target_repo:
-    description: 'Target GitHub repository for backups (e.g., org/repo)'
     required: true
-  target_branch:
-    description: 'Branch to push the backup files'
+
+  git_user_name:
+    description: 'Git username for commit messages'
     required: false
-    default: 'main'
-  db_list:
-    description: 'Comma-separated list of database names'
-    required: true
-  backup_frequency:
-    description: 'Backup frequency: daily, weekly, or monthly'
+    default: 'postgres-backup-action'
+
+  git_user_email:
+    description: 'Git email for commit messages'
     required: false
-    default: 'daily'
+    default: 'noreply@github.com'
 
 runs:
   using: 'composite'
   steps:
-    - name: Checkout target repository
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ inputs.target_repo }}
-        token: ${{ inputs.github_token }}
-        ref: ${{ inputs.target_branch }}
-
-    - name: Setup bash and gzip
+    - name: Install dependencies
       shell: bash
-      run: sudo apt-get update && sudo apt-get install -y gzip
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client gzip git
 
     - name: Run PostgreSQL Backup Script
       shell: bash
-      run: |
-        chmod +x ${{ github.action_path }}/entrypoint.sh
-        ${{ github.action_path }}/entrypoint.sh \
-          "${{ inputs.pg_user }}" \
-          "${{ inputs.pg_password }}" \
-          "${{ inputs.pg_host }}" \
-          "${{ inputs.pg_port }}" \
-          "${{ inputs.db_list }}" \
-          "${{ inputs.backup_frequency }}" \
-          "${{ inputs.github_token }}" \
-          "${{ inputs.target_repo }}" \
-          "${{ inputs.target_branch }}"
+      run: ./entrypoint.sh
+      env:
+        FREQ: ${{ inputs.backup_frequency }}
+        GITHUBTOKEN: ${{ inputs.github_token }}
+        DB_LIST_FILE: ${{ inputs.db_list_file }}
+        TARGET_REPO: ${{ inputs.target_repo }}
+        TARGET_BRANCH: ${{ inputs.target_branch }}
+        PG_USER: ${{ inputs.pg_user }}
+        PG_PASSWORD: ${{ inputs.pg_password }}
+        PG_HOST: ${{ inputs.pg_host }}
+        PG_PORT: ${{ inputs.pg_port }}
+        GIT_USER_NAME: ${{ inputs.git_user_name }}
+        GIT_USER_EMAIL: ${{ inputs.git_user_email }}
