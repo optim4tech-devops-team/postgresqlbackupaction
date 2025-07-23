@@ -1,0 +1,67 @@
+name: 'PostgreSQL Backup to GitHub'
+description: 'Backs up PostgreSQL databases and pushes them to a specified GitHub repository and branch.'
+author: 'optim4tech'
+branding:
+  icon: 'database'
+  color: 'blue'
+
+inputs:
+  github_token:
+    description: 'GitHub Token to push backups'
+    required: true
+  pg_user:
+    description: 'PostgreSQL username'
+    required: true
+  pg_password:
+    description: 'PostgreSQL password'
+    required: true
+  pg_host:
+    description: 'PostgreSQL host'
+    required: true
+  pg_port:
+    description: 'PostgreSQL port'
+    required: false
+    default: '5432'
+  target_repo:
+    description: 'Target GitHub repository for backups (e.g., org/repo)'
+    required: true
+  target_branch:
+    description: 'Branch to push the backup files'
+    required: false
+    default: 'main'
+  db_list:
+    description: 'Comma-separated list of database names'
+    required: true
+  backup_frequency:
+    description: 'Backup frequency: daily, weekly, or monthly'
+    required: false
+    default: 'daily'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.target_repo }}
+        token: ${{ inputs.github_token }}
+        ref: ${{ inputs.target_branch }}
+
+    - name: Setup bash and gzip
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y gzip
+
+    - name: Run PostgreSQL Backup Script
+      shell: bash
+      run: |
+        chmod +x ${{ github.action_path }}/entrypoint.sh
+        ${{ github.action_path }}/entrypoint.sh \
+          "${{ inputs.pg_user }}" \
+          "${{ inputs.pg_password }}" \
+          "${{ inputs.pg_host }}" \
+          "${{ inputs.pg_port }}" \
+          "${{ inputs.db_list }}" \
+          "${{ inputs.backup_frequency }}" \
+          "${{ inputs.github_token }}" \
+          "${{ inputs.target_repo }}" \
+          "${{ inputs.target_branch }}"
