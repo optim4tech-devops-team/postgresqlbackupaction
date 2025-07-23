@@ -82,3 +82,6 @@ runs:
         PG_PORT: ${{ inputs.pg_port }}
         GIT_USER_NAME: ${{ inputs.git_user_name }}
         GIT_USER_EMAIL: ${{ inputs.git_user_email }}
+branding:
+  icon: 'database'
+  color: 'blue'
